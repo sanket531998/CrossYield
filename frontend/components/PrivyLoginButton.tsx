@@ -9,7 +9,7 @@ const PrivyLoginButton = () => {
 
   if (!ready)
     return (
-      <button className="bg-gray-700 px-6 py-2 rounded" disabled>
+      <button className="bg-gray-700 px-4 py-1 rounded" disabled>
         Loading...
       </button>
     );
@@ -17,14 +17,14 @@ const PrivyLoginButton = () => {
   return authenticated ? (
     <button
       onClick={logout}
-      className="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg"
+      className="bg-red-600 hover:bg-red-500 text-white px-4 py-1 rounded-lg"
     >
       Logout
     </button>
   ) : (
     <button
       onClick={login}
-      className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-lg font-semibold"
+      className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1 rounded-lg text-lg font-semibold "
     >
       Connect & Start Yielding 🚀
     </button>
