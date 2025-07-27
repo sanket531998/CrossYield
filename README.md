@@ -52,7 +52,7 @@ Unite Defi Hackathon 2025 project - CrossYield is a cross-chain yield migration 
      ↓
 [Frontend App - Next.js + Tailwind]
      ↓
-[Backend API - Node.js/Golang]
+[Backend API - Node.js]
      ↓
 [Yield Engine - APY Scanner]
      ↓
