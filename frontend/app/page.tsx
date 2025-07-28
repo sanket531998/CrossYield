@@ -1,8 +1,8 @@
 // app/login/page.tsx
 
 import Header from "@/components/Header";
-import PrivyLoginButton from "@/components/PrivyLoginButton";
 import YieldOpportunities from "@/components/YieldOpportunities";
+import RainbowKitWalletConnect from "@/components/RainbowkitWalletConnect";
 
 export default function LoginPage() {
   return (
@@ -19,7 +19,7 @@ export default function LoginPage() {
         </p>
 
         <div className="pt-6">
-          <PrivyLoginButton />
+          <RainbowKitWalletConnect></RainbowKitWalletConnect>
         </div>
       </section>
 

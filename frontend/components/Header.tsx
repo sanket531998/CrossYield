@@ -1,5 +1,3 @@
-import PrivyLoginButton from "./PrivyLoginButton";
-
 export default function Header() {
   return (
     <header className="bg-black text-white p-4">
@@ -8,11 +6,7 @@ export default function Header() {
           CrossYield
         </h1>
         <nav>
-          <ul className="flex space-x-4">
-            <li>
-              <PrivyLoginButton />
-            </li>
-          </ul>
+          <ul className="flex space-x-4"></ul>
         </nav>
       </div>
     </header>
