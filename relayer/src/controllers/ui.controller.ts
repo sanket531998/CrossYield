@@ -22,7 +22,6 @@ export const getEthTokenBalancesCovalent = async (
   try {
     const { address } = req.params;
     const url = `https://api.covalenthq.com/v1/${1}/address/${address}/balances_v2/?key=cqt_rQccTbRRy6QcHVgfBPkKDB9VGyh8`;
-    console.log("Covalent API URL:", url);
 
     const response = await axios.get(url);
     const tokens = response.data;

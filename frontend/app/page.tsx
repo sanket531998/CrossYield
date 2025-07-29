@@ -5,12 +5,31 @@ import Header from "@/components/Header";
 import YieldOpportunities from "@/components/YieldOpportunities";
 import RainbowKitWalletConnect from "@/components/RainbowkitWalletConnect";
 import { useAccount } from "wagmi";
+import { useEffect } from "react";
+import {
+  ethTokensFromCovalentAPICall,
+  selectEthTokensFromCovalentState,
+} from "@/store/slices/EthTokensFromCovalentSlice";
+
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch } from "@/store"; // Adjust path as needed
 
 export default function LoginPage() {
   const { address, isConnected } = useAccount();
+  const { state, data } = useSelector(selectEthTokensFromCovalentState);
 
-  console.log("User address:", address);
-  console.log("Is user connected:", isConnected);
+  const dispatch = useDispatch<AppDispatch>();
+
+  useEffect(() => {
+    const data = {
+      address: address,
+      chainId: "1", // Assuming Ethereum mainnet, change as needed
+    };
+    dispatch(ethTokensFromCovalentAPICall(data));
+  }, [address, dispatch]);
+
+  console.log("Covalent API state:", state);
+  console.log("Covalent API data:", data?.data);
 
   return (
     <div className="bg-black text-white">

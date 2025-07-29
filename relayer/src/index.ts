@@ -3,10 +3,18 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 import type { Express } from "express"; // 👈 only import type
+import cors from "cors";
 
 import rootRouter from "./routes/index.routes";
 
 const app: Express = express();
+
+const corsOptions = {
+  origin: "http://localhost:3000",
+  credentials: true, // if you're using cookies or auth headers
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

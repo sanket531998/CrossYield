@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/store/provider";
 
 const queryClient = new QueryClient();
 
@@ -38,7 +39,9 @@ export default function RootLayout({
       <body>
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={wagmiConfig}>
-            <RainbowKitProvider>{children}</RainbowKitProvider>
+            <RainbowKitProvider>
+              <Providers>{children}</Providers>
+            </RainbowKitProvider>
           </WagmiProvider>
         </QueryClientProvider>
       </body>
