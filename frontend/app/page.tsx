@@ -1,10 +1,17 @@
 // app/login/page.tsx
+"use client";
 
 import Header from "@/components/Header";
 import YieldOpportunities from "@/components/YieldOpportunities";
 import RainbowKitWalletConnect from "@/components/RainbowkitWalletConnect";
+import { useAccount } from "wagmi";
 
 export default function LoginPage() {
+  const { address, isConnected } = useAccount();
+
+  console.log("User address:", address);
+  console.log("Is user connected:", isConnected);
+
   return (
     <div className="bg-black text-white">
       <Header />
@@ -20,6 +27,9 @@ export default function LoginPage() {
 
         <div className="pt-6">
           <RainbowKitWalletConnect></RainbowKitWalletConnect>
+        </div>
+        <div className="pt-6">
+          {/* <AptosWalletConnect></AptosWalletConnect> */}
         </div>
       </section>
 

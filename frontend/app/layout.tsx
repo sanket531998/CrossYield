@@ -1,10 +1,10 @@
-// src/app/layout.tsx
+// app/layout.tsx
 "use client";
 
 import "@rainbow-me/rainbowkit/styles.css";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { wagmiConfig, chains } from "@/lib/walletConfig";
+import { wagmiConfig } from "@/lib/walletConfig";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import type { Metadata } from "next";
@@ -23,10 +23,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const metadata: Metadata = {
-  title: "CrossYield",
-  description: "One-click cross-chain yield farming",
-};
+// export const metadata: Metadata = {
+//   title: "CrossYield",
+//   description: "One-click cross-chain yield farming",
+// };
 
 export default function RootLayout({
   children,
@@ -34,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={wagmiConfig}>
