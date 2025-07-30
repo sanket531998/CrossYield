@@ -10,17 +10,23 @@ import {
   ethTokensFromCovalentAPICall,
   selectEthTokensFromCovalentState,
 } from "@/store/slices/EthTokensFromCovalentSlice";
-
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "@/store"; // Adjust path as needed
 import AptosConnectButton from "@/components/AptosConnectButton";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
 
 export default function LoginPage() {
+  // For Ethereum wallet connection
   const { address, isConnected } = useAccount();
   const { state, data } = useSelector(selectEthTokensFromCovalentState);
   const [selectedChain, setSelectedChain] = useState<"eth" | "aptos" | null>(
     null
   );
+
+  // For Aptos wallet connection
+  const { account: aptosAccount, connected: aptosConnected } = useWallet();
+  // console.log("Aptos Account:", aptosAccount?.address?.toString());
+  // console.log("Aptos Connected:", aptosConnected);
 
   const dispatch = useDispatch<AppDispatch>();
 
@@ -32,8 +38,20 @@ export default function LoginPage() {
     dispatch(ethTokensFromCovalentAPICall(data));
   }, [address, dispatch]);
 
-  console.log("Covalent API state:", state);
-  console.log("Covalent API data:", data?.data);
+  // console.log("Covalent API state:", state);
+  // console.log("Covalent API data:", data?.data);
+
+  if (typeof window !== "undefined" && window.ethereum?.isMetaMask) {
+    console.log("MetaMask is available");
+  }
+
+  if (typeof window !== "undefined" && window.aptos?.isPetra) {
+    console.log("Petra is available");
+  }
+
+  if (typeof window !== "undefined" && window.aptos?.isMartian) {
+    console.log("Martian is available");
+  }
 
   return (
     <div className="bg-black text-white">
@@ -54,13 +72,13 @@ export default function LoginPage() {
           <div className="pt-8 space-x-4">
             <button
               onClick={() => setSelectedChain("eth")}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-all"
+              className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all"
             >
               🔗 Connect for Ethereum
             </button>
             <button
               onClick={() => setSelectedChain("aptos")}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all"
             >
               🚀 Connect for Aptos
             </button>
@@ -73,9 +91,9 @@ export default function LoginPage() {
             <RainbowKitWalletConnect />
             <button
               onClick={() => setSelectedChain(null)}
-              className="mt-4 text-sm text-gray-400 hover:underline"
+              className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-md font-medium transition-all"
             >
-              ← Back to choose chain
+              ← Back to Chain Selection
             </button>
           </div>
         )}
@@ -85,9 +103,9 @@ export default function LoginPage() {
             <AptosConnectButton />
             <button
               onClick={() => setSelectedChain(null)}
-              className="mt-4 text-sm text-gray-400 hover:underline"
+              className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-md font-medium transition-all"
             >
-              ← Back to choose chain
+              ← Back to Chain Selection
             </button>
           </div>
         )}

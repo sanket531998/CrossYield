@@ -6,7 +6,11 @@ export default function Header() {
           CrossYield
         </h1>
         <nav>
-          <ul className="flex space-x-4"></ul>
+          <ul className="flex space-x-4">
+            <div className="text-sm text-green-400 font-medium">
+              ✅ Connected via Ethereum
+            </div>
+          </ul>
         </nav>
       </div>
     </header>
