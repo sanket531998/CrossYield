@@ -6,11 +6,10 @@ import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { wagmiConfig } from "@/lib/walletConfig";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/store/provider";
+import { AptosWalletProvider } from "@/providers/aptos-walletProvider";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +39,9 @@ export default function RootLayout({
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={wagmiConfig}>
             <RainbowKitProvider>
-              <Providers>{children}</Providers>
+              <AptosWalletProvider>
+                <Providers>{children}</Providers>
+              </AptosWalletProvider>
             </RainbowKitProvider>
           </WagmiProvider>
         </QueryClientProvider>
