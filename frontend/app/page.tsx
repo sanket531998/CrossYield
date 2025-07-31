@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import YieldOpportunities from "@/components/YieldOpportunities";
 import RainbowKitWalletConnect from "@/components/RainbowkitWalletConnect";
 import { useAccount } from "wagmi";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import {
   ethTokensFromCovalentAPICall,
   selectEthTokensFromCovalentState,
@@ -14,49 +14,58 @@ import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "@/store"; // Adjust path as needed
 import AptosConnectButton from "@/components/AptosConnectButton";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import TokenTable from "@/components/TokenTable";
+import TokenTiles from "@/components/TokenTiles";
 
 export default function LoginPage() {
   // For Ethereum wallet connection
-  const { address, isConnected } = useAccount();
-  const { state, data } = useSelector(selectEthTokensFromCovalentState);
+  const { address, isConnected: ethConnected } = useAccount();
+
+  // For Aptos wallet connection
+  const { account: aptosAccount, connected: aptosConnected } = useWallet();
+
+  const { state, data: ethCovalentUserData } = useSelector(
+    selectEthTokensFromCovalentState
+  );
   const [selectedChain, setSelectedChain] = useState<"eth" | "aptos" | null>(
     null
   );
 
-  // For Aptos wallet connection
-  const { account: aptosAccount, connected: aptosConnected } = useWallet();
-  // console.log("Aptos Account:", aptosAccount?.address?.toString());
-  // console.log("Aptos Connected:", aptosConnected);
-
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
-    const data = {
-      address: address,
-      chainId: "1", // Assuming Ethereum mainnet, change as needed
-    };
-    dispatch(ethTokensFromCovalentAPICall(data));
+    // Fetch ETH token balances from Covalent API when address changes
+    if (address !== undefined && address !== null) {
+      const data = {
+        userAddress: address,
+        chainId: "1", // Ethereum mainnet
+      };
+      dispatch(ethTokensFromCovalentAPICall(data));
+      // console.log("Ethereum account:", address);
+    }
   }, [address, dispatch]);
+
+  useEffect(() => {
+    console.log(ethCovalentUserData?.data?.items || []);
+  }, [ethCovalentUserData]);
 
   // console.log("Covalent API state:", state);
   // console.log("Covalent API data:", data?.data);
 
-  if (typeof window !== "undefined" && window.ethereum?.isMetaMask) {
-    console.log("MetaMask is available");
-  }
-
-  if (typeof window !== "undefined" && window.aptos?.isPetra) {
-    console.log("Petra is available");
-  }
-
-  if (typeof window !== "undefined" && window.aptos?.isMartian) {
-    console.log("Martian is available");
-  }
+  // Wallet availability checks
+  // if (typeof window !== "undefined" && window.ethereum?.isMetaMask) {
+  //   console.log("MetaMask is available");
+  // }
+  // if (typeof window !== "undefined" && window.aptos?.isPetra) {
+  //   console.log("Petra is available");
+  // }
+  // if (typeof window !== "undefined" && window.aptos?.isMartian) {
+  //   console.log("Martian is available");
+  // }
 
   return (
     <div className="bg-black text-white">
       <Header />
-
       <section className="px-4 py-20 text-center max-w-3xl mx-auto space-y-6">
         <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">
           Welcome to CrossYield
@@ -111,6 +120,10 @@ export default function LoginPage() {
         )}
       </section>
 
+      <TokenTiles
+        tokens={ethCovalentUserData?.data?.items || []}
+        label="Your ETH Tokens"
+      />
       <YieldOpportunities />
     </div>
   );

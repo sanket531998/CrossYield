@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  walletAddress String    @unique
+  createdAt     DateTime  @default(now())
+
+  intents       Intent[]
+  authEvents    AuthEvent[]
+}
+
+model Intent {
+  id              String    @id @default(uuid())
+  userId          String
+  token           String
+  amount          Float
+  riskTolerance   String
+  minApy          Float
+  preferredChains String[] // stored as Postgres array
+  autoExecute     Boolean
+  status          String    @default("pending")
+  createdAt       DateTime  @default(now())
+
+  user            User      @relation(fields: [userId], references: [id])
+  apyResults      APYResult[]
+  executionLogs   ExecutionLog[]
+}
+
+model APYResult {
+  id          String   @id @default(uuid())
+  intentId    String
+  token       String
+  apy         Float
+  tvlUsd      Float
+  project     String
+  chain       String
+  riskScore   Float?
+  protocolId  String?
+
+  intent      Intent   @relation(fields: [intentId], references: [id])
+  protocol    Protocol? @relation(fields: [protocolId], references: [id])
+}
+
+model Protocol {
+  id        String   @id @default(uuid())
+  name      String
+  chain     String
+  website   String?
+  riskScore Float?
+
+  apys      APYResult[]
+}
+
+model ExecutionLog {
+  id          String   @id @default(uuid())
+  intentId    String
+  executedBy  String   // solver bot address
+  txHash      String
+  chain       String
+  gasUsed     Float
+  executedAt  DateTime @default(now())
+  status      String   @default("success")
+
+  intent      Intent   @relation(fields: [intentId], references: [id])
+}
+
+model AuthEvent {
+  id          String   @id @default(uuid())
+  userId      String
+  loginMethod String
+  ipAddress   String?
+  loggedInAt  DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}

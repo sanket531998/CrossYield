@@ -3,7 +3,10 @@ import { getEthTokenBalancesService } from "../services/ui.service";
 import axios from "axios";
 import { COVALENT_API_KEY } from "../config";
 
-export const getEthTokenBalance = async (req: Request, res: Response) => {
+export const getEthUserTokensAndBalance = async (
+  req: Request,
+  res: Response
+) => {
   const { address } = req.params;
   console.log("Fetching ETH token balances for address:", address);
   try {
@@ -15,13 +18,18 @@ export const getEthTokenBalance = async (req: Request, res: Response) => {
   }
 };
 
+export const getAptosUserTokensAndBalances = async (
+  req: Request,
+  res: Response
+) => {};
+
 export const getEthTokenBalancesCovalent = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const { address } = req.params;
-    const url = `https://api.covalenthq.com/v1/${1}/address/${address}/balances_v2/?key=cqt_rQccTbRRy6QcHVgfBPkKDB9VGyh8`;
+    const { chainId, userAddress } = req.query;
+    const url = `https://api.covalenthq.com/v1/${chainId}/address/${userAddress}/balances_v2/?key=cqt_rQccTbRRy6QcHVgfBPkKDB9VGyh8`;
 
     const response = await axios.get(url);
     const tokens = response.data;
@@ -38,6 +46,7 @@ export const getEthTokenBalancesCovalent = async (
 
     res.json(tokens);
   } catch (err: any) {
+    console.log(err);
     console.error("Failed to fetch token balances:", err.message);
     return err;
   }
@@ -88,5 +97,55 @@ export const getAPYFromDefiLlama = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("Failed to get APY data from DefiLlama:", err.message);
     res.status(500).json({ error: "Failed to get APY data from DefiLlama" });
+  }
+};
+
+export const getAllAPYsForTokens = async (req: Request, res: Response) => {
+  try {
+    const { tokens } = req.body; // e.g., ["eth", "usdt", "usdc"]
+
+    if (!Array.isArray(tokens) || tokens.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Tokens array is required in body." });
+    }
+
+    const { data } = await axios.get("https://yields.llama.fi/pools");
+    const allPools = data.data;
+
+    const inputTokenSet = new Set(tokens.map((t: string) => t.toLowerCase()));
+
+    // ✅ Only allow APTOS chain
+    const allowedChains = new Set(["aptos", "ethereum"]);
+
+    const allAPYs: Record<string, any[]> = {};
+
+    for (const pool of allPools) {
+      const symbol = pool.symbol?.toLowerCase();
+      const chain = pool.chain?.toLowerCase();
+
+      if (inputTokenSet.has(symbol) && allowedChains.has(chain)) {
+        if (!allAPYs[symbol]) allAPYs[symbol] = [];
+
+        allAPYs[symbol].push({
+          symbol: pool.symbol,
+          apy: pool.apy,
+          chain: pool.chain,
+          project: pool.project,
+          tvlUsd: pool.tvlUsd,
+          url: pool.url || `https://defillama.com/yield/${pool.project}`,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      allAPYs,
+    });
+  } catch (error) {
+    console.error("Error fetching APY data:", error);
+    res.status(500).json({
+      message: "Something went wrong while fetching APY data.",
+    });
   }
 };

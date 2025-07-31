@@ -16,7 +16,7 @@ export const ethTokensFromCovalentAPICall = createAsyncThunk(
   async (data: any, { rejectWithValue }) => {
     try {
       const response = await axios.get(
-        `${RELAYER_BASE_URL}/${ETH_TOKEN_BALANCES_COVALENT}/${data?.address}`
+        `${RELAYER_BASE_URL}/${ETH_TOKEN_BALANCES_COVALENT}?userAddress=${data?.userAddress}&chainId=${data.chainId}`
       );
 
       if (response.status !== 200) {
