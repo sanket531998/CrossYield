@@ -33,7 +33,7 @@ export default function Header() {
         </h1>
         <nav>
           <ul className="flex space-x-4">
-            <div className="text-sm font-bold text-green-400">
+            <div className="text-md font-bold text-green-400">
               {walletConnectionStatus}
             </div>
           </ul>

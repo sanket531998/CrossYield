@@ -2,6 +2,78 @@ import { Request, Response } from "express";
 import { getEthTokenBalancesService } from "../services/ui.service";
 import axios from "axios";
 import { COVALENT_API_KEY } from "../config";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+export const addWalletToUser = async (req: Request, res: Response) => {
+  try {
+    const { userId, walletAddress, chain, chainId } = req.body;
+
+    // Input validation
+    if (!walletAddress || !chain || typeof chainId !== "number") {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const normalizedAddress = walletAddress.toLowerCase();
+
+    // Check if wallet already exists in DB
+    const existingWallet = await prisma.wallet.findUnique({
+      where: {
+        address: normalizedAddress,
+      },
+    });
+
+    // Wallet exists already
+    if (existingWallet) {
+      if (userId && existingWallet.userId !== userId) {
+        return res.status(409).json({
+          error: "Wallet address already linked to a different user",
+        });
+      }
+
+      // Wallet already linked correctly → return existing userId
+      return res.status(200).json({ userId: existingWallet.userId });
+    }
+
+    let finalUserId = userId;
+
+    // Case: userId is provided
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      // userId provided but not found → create new user
+      if (!user) {
+        await prisma.user.create({
+          data: {
+            id: userId,
+          },
+        });
+      }
+    } else {
+      // Case: no userId provided → create new user
+      const newUser = await prisma.user.create({});
+      finalUserId = newUser.id;
+    }
+
+    // Create new Wallet linked to user
+    await prisma.wallet.create({
+      data: {
+        address: normalizedAddress,
+        chain,
+        chainId,
+        userId: finalUserId!,
+      },
+    });
+
+    return res.status(200).json({ userId: finalUserId });
+  } catch (err) {
+    console.error("Error adding wallet:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
 
 export const getEthUserTokensAndBalance = async (
   req: Request,
@@ -51,16 +123,6 @@ export const getEthTokenBalancesCovalent = async (
     return err;
   }
 };
-
-// export const getAPYFromDefiLlama = async (req: Request, res: Response) => {
-//   try {
-//     const apyData = await axios.get("https://yields.llama.fi/pools");
-//     res.json(apyData?.data);
-//   } catch (err: any) {
-//     console.error("Failed to get APY data from defillama:", err.message);
-//     return err;
-//   }
-// };
 
 export const getAPYFromDefiLlama = async (req: Request, res: Response) => {
   try {
