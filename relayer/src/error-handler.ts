@@ -20,28 +20,28 @@ export const errorHandler = (
     next: NextFunction
   ) => Promise<void>
 ) => {
-  return async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       await method(req, res, next);
     } catch (error: any) {
       let exception: HttpExceptions;
+
       if (error instanceof HttpExceptions) {
         exception = error;
+      } else if (error instanceof ZodError) {
+        exception = new BadRequestException(
+          "Unprocessable entity",
+          ErrorCodes.UNPROCESSABLE_ENTITY
+        );
       } else {
-        if (error instanceof ZodError) {
-          exception = new BadRequestException(
-            "Unprocessible entity",
-            ErrorCodes.UNPROCESSABLE_ENTITY
-          );
-        }
         exception = new InternalException(
-          "something went wrong",
+          "Something went wrong",
           error,
           ErrorCodes.INTERNAL_EXCEPTIONS
         );
       }
 
-      next(exception);
+      next(exception); // 🔁 This will go to Express's error middleware
     }
   };
 };

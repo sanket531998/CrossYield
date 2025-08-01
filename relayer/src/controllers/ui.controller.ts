@@ -1,77 +1,171 @@
-import { Request, Response } from "express";
+import e, { NextFunction, Request, Response } from "express";
 import { getEthTokenBalancesService } from "../services/ui.service";
 import axios from "axios";
 import { COVALENT_API_KEY } from "../config";
 import { PrismaClient } from "@prisma/client";
+import { BadRequestException } from "../exceptions/bad-request";
+import { ErrorCodes } from "../exceptions/root";
+import { InternalException } from "../exceptions/internal-exception";
 
 const prisma = new PrismaClient();
 
-export const addWalletToUser = async (req: Request, res: Response) => {
+// Controller to add a wallet to a user or create a new user if not provided
+export const addWalletToUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<any> => {
   try {
     const { userId, walletAddress, chain, chainId } = req.body;
 
     // Input validation
-    if (!walletAddress || !chain || typeof chainId !== "number") {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (
+      !walletAddress ||
+      !chain ||
+      typeof chainId !== "number" ||
+      isNaN(chainId)
+    ) {
+      return next(
+        new BadRequestException(
+          "Missing or invalid fields: walletAddress, chain, chainId",
+          ErrorCodes.BAD_REQUEST
+        )
+      );
     }
 
     const normalizedAddress = walletAddress.toLowerCase();
 
-    // Check if wallet already exists in DB
+    // Check if wallet already exists
     const existingWallet = await prisma.wallet.findUnique({
-      where: {
-        address: normalizedAddress,
-      },
+      where: { address: normalizedAddress },
     });
 
-    // Wallet exists already
     if (existingWallet) {
-      if (userId && existingWallet.userId !== userId) {
-        return res.status(409).json({
-          error: "Wallet address already linked to a different user",
-        });
-      }
-
-      // Wallet already linked correctly → return existing userId
-      return res.status(200).json({ userId: existingWallet.userId });
+      return res.status(200).json({
+        userId: existingWallet.userId,
+        status: "Wallet already exists",
+        wallet: existingWallet,
+      });
     }
 
     let finalUserId = userId;
 
-    // Case: userId is provided
     if (userId) {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
+      const user = await prisma.user.findUnique({ where: { id: userId } });
 
-      // userId provided but not found → create new user
       if (!user) {
-        await prisma.user.create({
-          data: {
-            id: userId,
-          },
-        });
+        return next(
+          new BadRequestException(
+            "Invalid userId provided",
+            ErrorCodes.BAD_REQUEST
+          )
+        );
       }
     } else {
-      // Case: no userId provided → create new user
-      const newUser = await prisma.user.create({});
+      const newUser = await prisma.user.create({ data: {} });
       finalUserId = newUser.id;
     }
 
-    // Create new Wallet linked to user
-    await prisma.wallet.create({
+    const createdWallet = await prisma.wallet.create({
       data: {
         address: normalizedAddress,
         chain,
         chainId,
-        userId: finalUserId!,
+        userId: finalUserId,
       },
     });
 
-    return res.status(200).json({ userId: finalUserId });
-  } catch (err) {
-    console.error("Error adding wallet:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(200).json({
+      userId: finalUserId,
+      wallet: createdWallet,
+      status: userId
+        ? "Wallet added to existing user successfully"
+        : "New user and wallet created successfully",
+    });
+  } catch (error) {
+    console.error("Error adding wallet:", error);
+
+    next(
+      new InternalException(
+        "Unexpected error while adding wallet",
+        ErrorCodes.INTERNAL_EXCEPTIONS,
+        500
+      )
+    );
+  }
+};
+
+export const createUserIntent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<any> => {
+  try {
+    const {
+      userId,
+      token,
+      amount,
+      riskTolerance,
+      minApy,
+      preferredChains,
+      autoExecute,
+      status, // optional
+    } = req.body;
+
+    // Input Validation
+    if (
+      !userId ||
+      !token ||
+      typeof amount !== "number" ||
+      !riskTolerance ||
+      typeof minApy !== "number" ||
+      !Array.isArray(preferredChains) ||
+      typeof autoExecute !== "boolean"
+    ) {
+      return next(
+        new BadRequestException(
+          "Missing or invalid fields: userId, token, amount, riskTolerance, minApy, preferredChains, autoExecute",
+          ErrorCodes.BAD_REQUEST
+        )
+      );
+    }
+
+    // Optional: Validate user exists
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return next(
+        new BadRequestException("User does not exist", ErrorCodes.BAD_REQUEST)
+      );
+    }
+
+    // Create Intent
+    const intent = await prisma.intent.create({
+      data: {
+        userId,
+        token,
+        amount,
+        riskTolerance,
+        minApy,
+        preferredChains,
+        autoExecute,
+        status: status || "pending",
+      },
+    });
+
+    return res.status(201).json({
+      status: "Intent created successfully",
+      intent,
+    });
+  } catch (error) {
+    console.error("Error creating user intent:", error);
+
+    next(
+      new InternalException(
+        "Failed to create user intent",
+        ErrorCodes.INTERNAL_EXCEPTIONS,
+        500
+      )
+    );
   }
 };
 
@@ -209,5 +303,65 @@ export const getAllAPYsForTokens = async (req: Request, res: Response) => {
     res.status(500).json({
       message: "Something went wrong while fetching APY data.",
     });
+  }
+};
+
+export const recordUserIntent = async (req: Request, res: Response) => {
+  try {
+    const {
+      userId,
+      token,
+      amount,
+      riskTolerance,
+      minApy,
+      preferredChains,
+      autoExecute,
+      expiresAt, // optional
+    } = req.body;
+
+    // Basic validation
+    if (
+      !userId ||
+      !token ||
+      typeof amount !== "number" ||
+      !riskTolerance ||
+      typeof minApy !== "number" ||
+      !Array.isArray(preferredChains) ||
+      typeof autoExecute !== "boolean"
+    ) {
+      throw new BadRequestException(
+        "Missing or invalid required fields",
+        ErrorCodes.BAD_REQUEST
+      );
+    }
+
+    // Optional: Validate that user exists
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException(
+        "User not found",
+        ErrorCodes.USER_NOT_FOUND
+      );
+    }
+
+    // Create Intent
+    const intent = await prisma.intent.create({
+      data: {
+        userId,
+        token,
+        amount,
+        riskTolerance,
+        minApy,
+        preferredChains,
+        autoExecute,
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        status: "pending", // default anyway
+      },
+    });
+
+    return res.status(201).json({ success: true, intent });
+  } catch (error) {
+    console.error("Error recording intent:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };

@@ -9,6 +9,7 @@ import rootRouter from "./routes/index.routes";
 import { errorMiddleware } from "./middlewares/errorMiddleware";
 
 const app: Express = express();
+const PORT = process.env.PORT || 5050;
 
 const corsOptions = {
   origin: "http://localhost:3000",
@@ -21,9 +22,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", rootRouter);
-app.get("/", (_req, res) => {
-  res.send("Server is running!");
-});
 
 export const prismaClient = new PrismaClient({
   log: ["query"],
@@ -32,7 +30,6 @@ export const prismaClient = new PrismaClient({
 // whenever any controller throws any exception this middleware will catch it
 app.use(errorMiddleware as ErrorRequestHandler);
 
-const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => {
   console.log(`✅ CrossYield backend listening at http://localhost:${PORT}`);
 });

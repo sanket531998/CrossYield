@@ -4,14 +4,19 @@ import { ErrorRequestHandler, NextFunction, Request, Response } from "express";
 import { HttpExceptions } from "../exceptions/root";
 
 export const errorMiddleware = (
-  error: HttpExceptions,
+  err: HttpExceptions,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  res.status(error.statusCode).json({
-    message: error.message,
-    errorCodes: error.errorCode,
-    errors: error.errors,
-  });
+  if (err.statusCode) {
+    // Custom error with statusCode
+    return res.status(err.statusCode).json({
+      error: err.message,
+      errorCode: err.errorCode,
+      errors: err.errors || null,
+    });
+  }
+  // Fallback for unknown errors
+  res.status(500).json({ error: "Internal Server Error" });
 };

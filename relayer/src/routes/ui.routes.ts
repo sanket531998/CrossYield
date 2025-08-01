@@ -6,7 +6,9 @@ import {
   getAptosUserTokensAndBalances,
   getAllAPYsForTokens,
   addWalletToUser,
+  createUserIntent,
 } from "../controllers/ui.controller";
+import { errorHandler } from "../error-handler";
 
 export const uiRoutes: Router = Router();
 
@@ -19,4 +21,5 @@ uiRoutes.get("/getAPYFromDefiLlama", getAPYFromDefiLlama);
 uiRoutes.get("/getAllAPYsForTokens", getAllAPYsForTokens);
 
 // Prisma routes
-uiRoutes.post("/addWalletToUser", addWalletToUser);
+uiRoutes.post("/addWalletToUser", errorHandler(addWalletToUser));
+uiRoutes.post("/createUserIntent", errorHandler(createUserIntent));
