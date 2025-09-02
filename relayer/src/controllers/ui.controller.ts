@@ -6,8 +6,34 @@ import { PrismaClient } from "@prisma/client";
 import { BadRequestException } from "../exceptions/bad-request";
 import { ErrorCodes } from "../exceptions/root";
 import { InternalException } from "../exceptions/internal-exception";
+import { GraphQLClient, gql } from "graphql-request";
+import { randomBytes, keccak256, hexlify } from "ethers";
 
 const prisma = new PrismaClient();
+// src/data/mockPools.ts
+export const mockPools = [
+  {
+    protocol: "liquidswap",
+    assetSymbol: "USDC",
+    apy: 8.75,
+    tvlUsd: 1_200_000,
+    chain: "aptos",
+  },
+  {
+    protocol: "thala",
+    assetSymbol: "USDT",
+    apy: 12.3,
+    tvlUsd: 900_000,
+    chain: "aptos",
+  },
+  {
+    protocol: "aries",
+    assetSymbol: "APT",
+    apy: 6.5,
+    tvlUsd: 700_000,
+    chain: "aptos",
+  },
+];
 
 // Controller to add a wallet to a user or create a new user if not provided
 export const addWalletToUser = async (
@@ -60,6 +86,22 @@ export const addWalletToUser = async (
             ErrorCodes.BAD_REQUEST
           )
         );
+      } else {
+        // creating a second wallet for the same user
+        const createdSecondWallet = await prisma.wallet.create({
+          data: {
+            address: normalizedAddress,
+            chain,
+            chainId,
+            userId: finalUserId,
+          },
+        });
+
+        return res.status(200).json({
+          userId: finalUserId,
+          wallet: createdSecondWallet,
+          status: "Second wallet added to existing user successfully",
+        });
       }
     } else {
       const newUser = await prisma.user.create({ data: {} });
@@ -149,6 +191,8 @@ export const createUserIntent = async (
         preferredChains,
         autoExecute,
         status: status || "pending",
+        fromChain: "ethereum", // default chain
+        toChain: "aptos", // default chain
       },
     });
 
@@ -218,6 +262,7 @@ export const getEthTokenBalancesCovalent = async (
   }
 };
 
+// APIs to fetch APY data from DefiLlama and Aries Markets
 export const getAPYFromDefiLlama = async (req: Request, res: Response) => {
   try {
     const { data } = await axios.get("https://yields.llama.fi/pools");
@@ -244,17 +289,63 @@ export const getAPYFromDefiLlama = async (req: Request, res: Response) => {
     const sortedEthPools = ethPools.sort((a: any, b: any) => b.apy - a.apy);
 
     // Limit to top 5-10 protocols
-    const topPools = sortedEthPools.slice(0, 10);
+    const topPools = sortedEthPools.slice(0, 100);
 
     res.json({
-      count: topPools.length,
-      data: topPools,
+      count: sortedEthPools.length,
+      data: sortedEthPools,
     });
   } catch (err: any) {
     console.error("Failed to get APY data from DefiLlama:", err.message);
     res.status(500).json({ error: "Failed to get APY data from DefiLlama" });
   }
 };
+
+interface LendingMarket {
+  asset: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+  supplyApy: string;
+  borrowApy: string;
+  totalSupplied: string;
+  totalBorrowed: string;
+}
+
+interface AriesResponse {
+  lendingMarkets: LendingMarket[];
+}
+
+/**
+ * Fetches yield data from Aries Markets
+ * @param req - Express request object
+ * @param res - Express response object
+ */
+
+export const getAptosApys = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const useMock = true;
+
+    if (useMock) {
+      return res.status(200).json({ source: "mock", pools: mockPools });
+    }
+
+    const response = await axios.get(
+      "https://api.kanalabs.io/v1/yield-aggregator/pools"
+    );
+    const pools = response.data?.pools || [];
+
+    res.status(200).json({ source: "live", pools });
+  } catch (err: any) {
+    console.error("Error fetching APYs:", err.message);
+    res.status(500).json({ error: "Failed to fetch APY data" });
+  }
+};
+/////////////
 
 export const getAllAPYsForTokens = async (req: Request, res: Response) => {
   try {
@@ -356,6 +447,8 @@ export const recordUserIntent = async (req: Request, res: Response) => {
         autoExecute,
         expiresAt: expiresAt ? new Date(expiresAt) : undefined,
         status: "pending", // default anyway
+        fromChain: "ethereum", // default chain
+        toChain: "aptos", // default chain
       },
     });
 
@@ -363,5 +456,59 @@ export const recordUserIntent = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error recording intent:", error);
     return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+export const submitIntent = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const {
+      userId,
+      fromChain,
+      toChain,
+      token,
+      amount,
+      riskTolerance,
+      minApy,
+      autoExecute,
+      preferredChains,
+    } = req.body;
+
+    if (!userId || !fromChain || !toChain || !token || !amount) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Step 0: Generate preimage + hashlock
+    const preimage = hexlify(randomBytes(32));
+    const hashlock = keccak256(preimage);
+
+    // Step 1: Create intent in DB
+    const intent = await prisma.intent.create({
+      data: {
+        userId,
+        fromChain,
+        toChain,
+        token,
+        amount: parseFloat(amount), // ensure it's a float
+        riskTolerance: riskTolerance || "medium",
+        minApy: minApy || 0,
+        autoExecute: autoExecute ?? false,
+        preferredChains: preferredChains || [],
+        hashlock,
+        secret: preimage, // ⚠️ If you only want to store preimage later, remove this
+      },
+    });
+
+    // Step 2: Respond to client
+    res.status(200).json({
+      intent,
+      preimage,
+      hashlock,
+      message: "Intent created successfully",
+    });
+  } catch (error) {
+    console.error("Failed to submit intent:", error);
+    res.status(500).json({ message: "Server error while creating intent" });
   }
 };

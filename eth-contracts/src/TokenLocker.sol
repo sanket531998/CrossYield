@@ -12,4 +12,4 @@ contract TokenLocker {
     function checkBalance(address token, address user) external view returns (uint256) {
         return IERC20(token).balanceOf(user);
     }
-}  
+}

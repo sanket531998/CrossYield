@@ -27,3 +27,7 @@ CREATE UNIQUE INDEX "Wallet_address_key" ON "crossyield"."Wallet"("address");
 
 -- AddForeignKey
 ALTER TABLE "crossyield"."Wallet" ADD CONSTRAINT "Wallet_userId_fkey" FOREIGN KEY ("userId") REFERENCES "crossyield"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+ALTER TABLE "crossyield"."Intent" ADD COLUMN "fromChain" TEXT NOT NULL;
+ALTER TABLE "crossyield"."Intent" ADD COLUMN "toChain" TEXT NOT NULL;

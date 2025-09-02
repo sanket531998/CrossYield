@@ -16,10 +16,11 @@ import AptosConnectButton from "@/components/AptosConnectButton";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import TokenTable from "@/components/TokenTable";
 import TokenTiles from "@/components/TokenTiles";
+import { addWalletToUserAPICall } from "@/store/slices/AddWalletToUserSlice";
 
 export default function LoginPage() {
   // For Ethereum wallet connection
-  const { address, isConnected: ethConnected } = useAccount();
+  const { address: ethAccount, isConnected: ethConnected } = useAccount();
 
   // For Aptos wallet connection
   const { account: aptosAccount, connected: aptosConnected } = useWallet();
@@ -33,17 +34,30 @@ export default function LoginPage() {
 
   const dispatch = useDispatch<AppDispatch>();
 
+  let userIdFromLocalStorage = localStorage.getItem("crossyieldUserId");
+
+  // API calls to add wallet to user
+  useEffect(() => {
+    const data = {
+      userid: userIdFromLocalStorage,
+      walletAddress: ethAccount,
+      chain: "eth",
+      chainId: 1,
+    };
+    dispatch(addWalletToUserAPICall(data));
+  }, []);
+
   useEffect(() => {
     // Fetch ETH token balances from Covalent API when address changes
-    if (address !== undefined && address !== null) {
+    if (ethAccount !== undefined && ethAccount !== null) {
       const data = {
-        userAddress: address,
+        userAddress: ethAccount,
         chainId: "1", // Ethereum mainnet
       };
       dispatch(ethTokensFromCovalentAPICall(data));
       // console.log("Ethereum account:", address);
     }
-  }, [address, dispatch]);
+  }, [ethAccount, dispatch]);
 
   useEffect(() => {
     console.log(ethCovalentUserData?.data?.items || []);
@@ -120,10 +134,10 @@ export default function LoginPage() {
         )}
       </section>
 
-      <TokenTiles
+      {/* <TokenTiles
         tokens={ethCovalentUserData?.data?.items || []}
         label="Your ETH Tokens"
-      />
+      /> */}
       <YieldOpportunities />
     </div>
   );

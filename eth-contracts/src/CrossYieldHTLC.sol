@@ -18,18 +18,21 @@ contract CrossYieldHTLC {
 
     mapping(bytes32 => Lock) public locks;
 
-    event Locked(bytes32 indexed id, address indexed sender, address indexed receiver, address token, uint256 amount, bytes32 hashlock, uint256 timelock);
-    event Claimed(bytes32 indexed id, bytes32 preimage);
-    event Refunded(bytes32 indexed id);
-
-    function lock(
-        bytes32 id,
-        address receiver,
+    event Locked(
+        bytes32 indexed id,
+        address indexed sender,
+        address indexed receiver,
         address token,
         uint256 amount,
         bytes32 hashlock,
         uint256 timelock
-    ) external {
+    );
+    event Claimed(bytes32 indexed id, bytes32 preimage);
+    event Refunded(bytes32 indexed id);
+
+    function lock(bytes32 id, address receiver, address token, uint256 amount, bytes32 hashlock, uint256 timelock)
+        external
+    {
         require(locks[id].sender == address(0), "Lock already exists");
         require(timelock > block.timestamp, "Timelock must be in future");
 

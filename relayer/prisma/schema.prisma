@@ -5,139 +5,128 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["crossyield"] // <--- This is key
+  schemas  = ["crossyield"]
 }
 
-
 model User {
-  @@schema("crossyield")
-
-  id         String    @id @default(uuid())
-  createdAt  DateTime  @default(now())
-
-  wallets    Wallet[]
+  id         String      @id @default(uuid())
+  createdAt  DateTime    @default(now())
+  authEvents AuthEvent[]
   intents    Intent[]
-  authEvents AuthEvent[]  // 🔥 Add this line
+  wallets    Wallet[]
+
+  @@schema("crossyield")
 }
 
 model Wallet {
-  @@schema("crossyield")
-
   id        String   @id @default(uuid())
   userId    String
   address   String   @unique
-  chain     String   // "ethereum" or "aptos"
-  chainId   Int      // e.g. 1 for Ethereum, 137 for Polygon, 8453 for Base, 1 for Aptos mainnet
-  
-  user      User     @relation(fields: [userId], references: [id])
+  chain     String
+  chainId   Int
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@schema("crossyield")
 }
 
-
 model Intent {
-  @@schema("crossyield")
-
-  id              String    @id @default(uuid())
+  id              String         @id @default(uuid())
   userId          String
   token           String
   amount          Float
   riskTolerance   String
   minApy          Float
   preferredChains String[]
+  fromChain      String
+  toChain        String
   autoExecute     Boolean
-  status          String    @default("pending")
-
-  // HTLC-related fields (denormalized for easier querying)
-  hashlock        String?       // SHA-256(secret)
-  secret          String?       // revealed secret (after unlock)
-  timelock        DateTime?     // enforce timeout on-chain (should match expiresAt)
-  isRefunded      Boolean?      // refunded if HTLC expired
-  isRedeemed      Boolean?      // completed successfully
-
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  status          String         @default("pending")
+  hashlock        String?
+  secret          String?
+  timelock        DateTime?
+  isRefunded      Boolean?
+  isRedeemed      Boolean?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   expiresAt       DateTime?
   executedAt      DateTime?
-
-  user            User      @relation(fields: [userId], references: [id])
   apyResults      APYResult[]
   executionLogs   ExecutionLog[]
   htlc            HTLC?
+  user            User           @relation(fields: [userId], references: [id])
+
+  @@schema("crossyield")
 }
 
 model HTLC {
+  id           String         @id @default(uuid())
+  intentId     String         @unique
+  hashlock     String
+  secret       String?
+  timelock     DateTime
+  redeemedAt   DateTime?
+  refundedAt   DateTime?
+  isRefunded   Boolean        @default(false)
+  isRedeemed   Boolean        @default(false)
+  chain        String
+  unlockTxHash String?
+  executions   ExecutionLog[]
+  intent       Intent         @relation(fields: [intentId], references: [id])
+
   @@schema("crossyield")
-
-  id            String   @id @default(uuid())
-  intentId      String   @unique
-  hashlock      String   // SHA-256 of secret
-  secret        String?  // revealed later
-  timelock      DateTime
-  redeemedAt    DateTime?
-  refundedAt    DateTime?
-  isRefunded    Boolean  @default(false)
-  isRedeemed    Boolean  @default(false)
-  chain         String   // which chain this HTLC was created on
-  unlockTxHash  String?  // actual tx that revealed the secret
-
-  intent        Intent   @relation(fields: [intentId], references: [id])
-  executions    ExecutionLog[]
 }
 
 model APYResult {
+  id         String    @id @default(uuid())
+  intentId   String
+  token      String
+  apy        Float
+  tvlUsd     Float
+  project    String
+  chain      String
+  riskScore  Float?
+  protocolId String?
+  intent     Intent    @relation(fields: [intentId], references: [id])
+  protocol   Protocol? @relation(fields: [protocolId], references: [id])
+
   @@schema("crossyield")
-
-  id          String   @id @default(uuid())
-  intentId    String
-  token       String
-  apy         Float
-  tvlUsd      Float
-  project     String
-  chain       String
-  riskScore   Float?
-  protocolId  String?
-
-  intent      Intent   @relation(fields: [intentId], references: [id])
-  protocol    Protocol? @relation(fields: [protocolId], references: [id])
 }
 
 model Protocol {
-  @@schema("crossyield")
-
-  id        String   @id @default(uuid())
+  id        String      @id @default(uuid())
   name      String
   chain     String
   website   String?
   riskScore Float?
-
   apys      APYResult[]
+
+  @@schema("crossyield")
 }
 
 model ExecutionLog {
+  id         String   @id @default(uuid())
+  intentId   String
+  executedBy String
+  txHash     String
+  chain      String
+  gasUsed    Float
+  executedAt DateTime @default(now())
+  status     String   @default("success")
+  htlcId     String?
+  htlc       HTLC?    @relation(fields: [htlcId], references: [id])
+  intent     Intent   @relation(fields: [intentId], references: [id])
+
   @@schema("crossyield")
-
-  id          String   @id @default(uuid())
-  intentId    String
-  executedBy  String   // solver bot address
-  txHash      String
-  chain       String
-  gasUsed     Float
-  executedAt  DateTime @default(now())
-  status      String   @default("success")
-
-  htlcId      String?   // optional link to HTLC execution
-  intent      Intent    @relation(fields: [intentId], references: [id])
-  htlc        HTLC?     @relation(fields: [htlcId], references: [id])
 }
 
 model AuthEvent {
-  @@schema("crossyield")
-
   id          String   @id @default(uuid())
   userId      String
   loginMethod String
   ipAddress   String?
   loggedInAt  DateTime @default(now())
-
   user        User     @relation(fields: [userId], references: [id])
+
+  @@schema("crossyield")
 }
